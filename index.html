@@ -358,20 +358,30 @@
     let timer = null;
     let timeLeft = 30;
 
-    // ----- 音声（Web Audio APIで効果音を自作生成） -----
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // ----- 音声処理（安全対策版） -----
+    let audioCtx = null;
     
     function playBeep(freq, duration) {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-      osc.stop(audioCtx.currentTime + duration);
+      try {
+        // 初めて操作したタイミングで安全に初期化
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.log("Audio play blocked or unsupported:", e);
+      }
     }
 
     function playFanfare() {
@@ -391,7 +401,6 @@
     function closeConfig() {
       document.getElementById('config-screen').classList.remove('active');
       document.getElementById('display-screen').classList.add('active');
-      // ここでESP32へ設定値を送信（通信処理）
       console.log("ESP32へ設定送信: パワー=" + document.getElementById('input-power').value);
     }
 
@@ -399,14 +408,13 @@
       const power = document.getElementById('input-power').value;
       document.getElementById('val-power').innerText = power;
       
-      // パワーが強いほど爪が深く閉じるアニメーション
-      const angle = 45 - (power * 0.35); // 0%なら開く、100%なら強く閉じる
+      const angle = 45 - (power * 0.35);
       document.getElementById('claw-left').style.transform = `rotate(-${angle}deg)`;
       document.getElementById('claw-right').style.transform = `rotate(${angle}deg)`;
     }
 
     function updateSpeedLabel(val) {
-      const labels = ["1": "低速（慎重）", "2": "中速（標準）", "3": "高速（難しめ）"];
+      const labels = {"1": "低速（慎重）", "2": "中速（標準）", "3": "高速（難しめ）"};
       document.getElementById('val-speed').innerText = labels[val];
     }
 
@@ -434,7 +442,6 @@
       statusText.innerText = 'PLAYING!';
       statusText.className = 'status-title playing';
       
-      // タイマー開始
       const maxTime = parseInt(document.getElementById('input-time').value);
       timeLeft = maxTime;
       document.getElementById('timer-text').innerText = timeLeft;
@@ -444,7 +451,7 @@
         timeLeft--;
         document.getElementById('timer-text').innerText = timeLeft;
         if (timeLeft <= 5 && timeLeft > 0) {
-          playBeep(440, 0.08); // カウントダウン音
+          playBeep(440, 0.08);
         }
         if (timeLeft <= 0) {
           clearInterval(timer);
