@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>クレーンゲーム 液晶＆設定パネル</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --panel-bg: #1e293b;
+      --accent: #ff0055;
+      --accent-yellow: #ffcc00;
+      --cyan: #00f2fe;
+      --text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-color);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* 画面切り替えコンテナ */
+    .view-screen {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      flex-direction: column;
+    }
+
+    .view-screen.active {
+      display: flex;
+    }
+
+    /* ---------------- 1. プレイヤー画面 (DISPLAY) ---------------- */
+    #display-screen {
+      background: radial-gradient(circle at center, #1e1b4b 0%, #090514 100%);
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+    }
+
+    .credit-badge {
+      font-size: 1.8rem;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px 20px;
+      border-radius: 30px;
+      border: 2px solid var(--accent-yellow);
+      color: var(--accent-yellow);
+      box-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
+    }
+
+    .settings-btn-trigger {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #aaa;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .main-status-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-grow: 1;
+    }
+
+    .status-title {
+      font-size: 4rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-shadow: 0 0 20px rgba(0,242,254,0.6);
+      margin-bottom: 20px;
+      color: var(--cyan);
+    }
+
+    .status-title.insert { color: var(--accent-yellow); animation: blink 1.2s infinite; }
+    .status-title.playing { color: #00ff66; }
+    .status-title.get { color: #ff0055; animation: bounce 0.6s infinite alternate; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    @keyframes bounce {
+      from { transform: scale(1); }
+      to { transform: scale(1.15); }
+    }
+
+    .timer-display {
+      font-size: 7rem;
+      font-weight: bold;
+      font-family: monospace;
+      color: #ffffff;
+      text-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+      line-height: 1;
+    }
+
+    /* ---------------- 2. 設定画面 (CONFIG) ---------------- */
+    #config-screen {
+      background-color: var(--panel-bg);
+      padding: 25px;
+      overflow-y: auto;
+    }
+
+    .config-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #334155;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+
+    .config-header h2 {
+      margin: 0;
+      color: var(--cyan);
+      font-size: 1.8rem;
+    }
+
+    .close-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: var(--accent-yellow);
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+    }
+
+    .setting-item {
+      margin-bottom: 20px;
+    }
+
+    .setting-item label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .setting-item input[type="range"] {
+      width: 100%;
+      height: 10px;
+      border-radius: 5px;
+      background: #334155;
+      outline: none;
+      accent-color: var(--cyan);
+    }
+
+    /* アーム爪のシミュレーション */
+    .arm-preview-box {
+      width: 100%;
+      height: 120px;
+      background: #1e293b;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arm-claw {
+      width: 20px;
+      height: 40px;
+      background: #94a3b8;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .arm-finger {
+      position: absolute;
+      bottom: -30px;
+      width: 12px;
+      height: 35px;
+      background: #cbd5e1;
+      border-radius: 4px;
+      transition: transform 0.3s ease;
+    }
+
+    .arm-finger.left {
+      left: -8px;
+      transform-origin: top right;
+    }
+
+    .arm-finger.right {
+      right: -8px;
+      transform-origin: top left;
+    }
+
+    .btn-action {
+      width: 100%;
+      padding: 12px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    /* デモ動作用テストパネル（下部固定） */
+    .demo-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.85);
+      border-top: 1px solid #334155;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      z-index: 100;
+    }
+
+    .demo-btn {
+      background: #334155;
+      color: #fff;
+      border: 1px solid #64748b;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= 1. ゲーム液晶画面 (表) ================= -->
+  <div id="display-screen" class="view-screen active">
+    <div class="header-bar">
+      <div class="credit-badge">CREDIT: <span id="credit-count">0</span></div>
+      <button class="settings-btn-trigger" onclick="openConfig()">⚙ 設定メニュー</button>
+    </div>
+
+    <div class="main-status-container">
+      <div id="status-text" class="status-title insert">INSERT COIN</div>
+      <div id="timer-text" class="timer-display">--</div>
+    </div>
+  </div>
+
+  <!-- ================= 2. 管理・設定パネル (裏) ================= -->
+  <div id="config-screen" class="view-screen">
+    <div class="config-header">
+      <h2>⚙ クレーンゲーム設定・管理画面</h2>
+      <button class="close-btn" onclick="closeConfig()">保存して戻る</button>
+    </div>
+
+    <div class="config-grid">
+      <!-- アーム設定 -->
+      <div class="card">
+        <h3>🦾 アーム（爪）の強さ調整</h3>
+        <div class="setting-item">
+          <label>掴む強さ (PWMパワー): <span id="val-power">80</span>%</label>
+          <input type="range" id="input-power" min="10" max="100" value="80" oninput="updateArmPreview()">
+        </div>
+        <div class="setting-item">
+          <label>上昇時の維持力 (ポロリ率): <span id="val-hold">50</span>%</label>
+          <input type="range" id="input-hold" min="0" max="100" value="50">
+        </div>
+
+        <!-- リアルタイム爪開きシミュレーション -->
+        <label style="font-size:0.85rem; color:#aaa;">[掴み力プレビュー]</label>
+        <div class="arm-preview-box">
+          <div class="arm-claw">
+            <div class="arm-finger left" id="claw-left"></div>
+            <div class="arm-finger right" id="claw-right"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ゲーム設定 -->
+      <div class="card">
+        <h3>⏱ ゲーム難易度・タイマー設定</h3>
+        <div class="setting-item">
+          <label>1プレイ制限時間: <span id="val-time">30</span> 秒</label>
+          <input type="range" id="input-time" min="10" max="60" value="30" step="5" oninput="document.getElementById('val-time').innerText = this.value">
+        </div>
+        <div class="setting-item">
+          <label>下降スピード: <span id="val-speed">中速</span></label>
+          <input type="range" id="input-speed" min="1" max="3" value="2" oninput="updateSpeedLabel(this.value)">
+        </div>
+      </div>
+
+      <!-- テスト機能 -->
+      <div class="card">
+        <h3>🛠 動作テスト（ESP32テスト送信）</h3>
+        <button class="btn-action" onclick="testArmAction()">爪の開閉テスト動作</button>
+        <button class="btn-action" style="background:#059669; margin-top:10px;" onclick="addCredit()">1コイン投入テスト (+1)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- デモテスト操作バー（開発確認用） -->
+  <div class="demo-bar">
+    <span style="color:#aaa; font-size:0.85rem; align-self:center;">[マイコン信号シミュレータ]:</span>
+    <button class="demo-btn" onclick="simCoin()">💰 コイン投入</button>
+    <button class="demo-btn" onclick="simStart()">▶ プレイ開始</button>
+    <button class="demo-btn" onclick="simGet()">🎉 GET演出</button>
+  </div>
+
+  <script>
+    // 状態管理変数
+    let credits = 0;
+    let timer = null;
+    let timeLeft = 30;
+
+    // ----- 音声（Web Audio APIで効果音を自作生成） -----
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBeep(freq, duration) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playFanfare() {
+      const notes = [523, 659, 783, 1046];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => playBeep(freq, 0.3), idx * 150);
+      });
+    }
+
+    // ----- UI操作機能 -----
+    function openConfig() {
+      document.getElementById('display-screen').classList.remove('active');
+      document.getElementById('config-screen').classList.add('active');
+      updateArmPreview();
+    }
+
+    function closeConfig() {
+      document.getElementById('config-screen').classList.remove('active');
+      document.getElementById('display-screen').classList.add('active');
+      // ここでESP32へ設定値を送信（通信処理）
+      console.log("ESP32へ設定送信: パワー=" + document.getElementById('input-power').value);
+    }
+
+    function updateArmPreview() {
+      const power = document.getElementById('input-power').value;
+      document.getElementById('val-power').innerText = power;
+      
+      // パワーが強いほど爪が深く閉じるアニメーション
+      const angle = 45 - (power * 0.35); // 0%なら開く、100%なら強く閉じる
+      document.getElementById('claw-left').style.transform = `rotate(-${angle}deg)`;
+      document.getElementById('claw-right').style.transform = `rotate(${angle}deg)`;
+    }
+
+    function updateSpeedLabel(val) {
+      const labels = ["1": "低速（慎重）", "2": "中速（標準）", "3": "高速（難しめ）"];
+      document.getElementById('val-speed').innerText = labels[val];
+    }
+
+    // ----- マイコン連動シミュレーション -----
+    function simCoin() {
+      credits++;
+      document.getElementById('credit-count').innerText = credits;
+      playBeep(880, 0.15);
+      
+      const statusText = document.getElementById('status-text');
+      if (statusText.innerText === 'INSERT COIN') {
+        statusText.innerText = 'PRESS START';
+      }
+    }
+
+    function simStart() {
+      if (credits <= 0) {
+        alert("コインを入れてください！");
+        return;
+      }
+      credits--;
+      document.getElementById('credit-count').innerText = credits;
+      
+      const statusText = document.getElementById('status-text');
+      statusText.innerText = 'PLAYING!';
+      statusText.className = 'status-title playing';
+      
+      // タイマー開始
+      const maxTime = parseInt(document.getElementById('input-time').value);
+      timeLeft = maxTime;
+      document.getElementById('timer-text').innerText = timeLeft;
+      
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer-text').innerText = timeLeft;
+        if (timeLeft <= 5 && timeLeft > 0) {
+          playBeep(440, 0.08); // カウントダウン音
+        }
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          statusText.innerText = 'TIME UP!';
+          setTimeout(resetDisplay, 2000);
+        }
+      }, 1000);
+    }
+
+    function simGet() {
+      clearInterval(timer);
+      const statusText = document.getElementById('status-text');
+      statusText.innerText = '🎉 GET!! 🎉';
+      statusText.className = 'status-title get';
+      playFanfare();
+      
+      setTimeout(resetDisplay, 4000);
+    }
+
+    function resetDisplay() {
+      const statusText = document.getElementById('status-text');
+      statusText.innerText = credits > 0 ? 'PRESS START' : 'INSERT COIN';
+      statusText.className = 'status-title insert';
+      document.getElementById('timer-text').innerText = '--';
+    }
+
+    function testArmAction() {
+      playBeep(600, 0.1);
+      alert("ESP32へアームテスト命令を送信しました！");
+    }
+
+    function addCredit() {
+      simCoin();
+    }
+  </script>
+</body>
+</html>
