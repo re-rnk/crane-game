@@ -63,6 +63,11 @@
       padding: 10px 20px;
     }
 
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
     .credit-badge {
       font-size: 1.8rem;
       font-weight: bold;
@@ -74,14 +79,19 @@
       box-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
     }
 
-    .settings-btn-trigger {
+    .btn-ui {
       background: rgba(255,255,255,0.1);
       border: 1px solid rgba(255,255,255,0.3);
-      color: #aaa;
+      color: #fff;
       padding: 8px 16px;
       border-radius: 8px;
       font-size: 0.9rem;
       cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-ui:active {
+      background: rgba(255,255,255,0.3);
     }
 
     .main-status-container {
@@ -283,7 +293,10 @@
   <div id="display-screen" class="view-screen active">
     <div class="header-bar">
       <div class="credit-badge">CREDIT: <span id="credit-count">0</span></div>
-      <button class="settings-btn-trigger" onclick="openConfig()">⚙ 設定メニュー</button>
+      <div class="header-actions">
+        <button class="btn-ui" onclick="toggleFullscreen()">⛶ 全画面</button>
+        <button class="btn-ui" onclick="openConfig()">⚙ 設定メニュー</button>
+      </div>
     </div>
 
     <div class="main-status-container">
@@ -358,12 +371,31 @@
     let timer = null;
     let timeLeft = 30;
 
+    // ----- 全画面切り替え処理 -----
+    function toggleFullscreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        // 全画面化
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) { /* Safari / iOS / Fireタブレット */
+          docEl.webkitRequestFullscreen();
+        }
+      } else {
+        // 全画面解除
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    }
+
     // ----- 音声処理（安全対策版） -----
     let audioCtx = null;
     
     function playBeep(freq, duration) {
       try {
-        // 初めて操作したタイミングで安全に初期化
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
